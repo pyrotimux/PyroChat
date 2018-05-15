@@ -17,11 +17,12 @@ const app = exp();
 app.use(morgan('combined'));
 app.use(bdparser.json());
 
-
+var server = require('http').Server(app);
+var io = require('socket.io')(server);
 
 var mongoose = require('mongoose');
 mongoose.Promise = require("bluebird");
-mongoose.connect('mongodb://localhost:27017/finaldb', {
+mongoose.connect('mongodb://localhost:27017/finaldb', {  
     promiseLibrary: require('bluebird') })
         .then(() =>  console.log('connection succesful'))
         .catch((err) => console.error(err));
@@ -39,7 +40,28 @@ var User = mongoose.model('User');
 var mmesg = require('./models/message.js');
 var Message = mongoose.model('Message');
 
-// routes
+io.on('connection', (socket) => {  
+	
+	// on client connection write console and send client msg.
+	console.log('Client connected'); 
+	socket.emit('fromServer', {id: 'Hello'}); 
+
+	// on client disconnect write to console
+	socket.on('disconnect', (socket) => {
+		console.log('Client disconnected');
+	});
+
+	// listen for client messages and respond.
+	socket.on('fromClient', (data) => { 
+		console.log('Received: ' + data.id);
+		if(data.id == "Hi There!"){
+			socket.emit('fromServer', {id: 'How are you!'}); 
+		}
+		
+	});
+});
+
+// routes 
 app.get('/', (req, res) => {
     res.send([{
         title: "HI!",
@@ -73,7 +95,7 @@ app.post('/register', function(req, res) {
       username: req.body.username
     }, function(err, user) {
       if (err) throw err;
-
+  
       if (!user) {
         res.status(401).send({success: false, msg: 'Authentication failed. User not found.'});
       } else {
@@ -115,9 +137,9 @@ app.post('/register', function(req, res) {
       });
       mes.save(function(err) {
         if (err) throw err;
-
+        
         });
-    }
+    } 
   });
 
   app.get('/getmsg', passport.authenticate('jwt', { session: false}), function(req, res) {
@@ -142,7 +164,7 @@ app.post('/register', function(req, res) {
         console.log(dat);
       }).select({ "username": 1, "_id": 0});
 
-
+      
     } else {
       return res.status(403).send({success: false, msg: 'Unauthorized.'});
     }
@@ -150,113 +172,5 @@ app.post('/register', function(req, res) {
 
 
 
-var server = app.listen(process.env.Port | 9090);
-var io = require('socket.io')(server);
+app.listen(process.env.Port | 9090)
 
-
-io.on('connection', (socket) => {
-
-	// on client connection write console and send client msg.
-	console.log('Client connected');
-
-	// on client disconnect write to console
-	socket.on('disconnect', (socket) => {
-		console.log('Client disconnected');
-	});
-
-	// listen for client messages and respond.
-//	socket.on('fromClient', (data) => {
-//		console.log('Received: ' + data.id);
-//		if(data.id == "Hi There!"){
-//			socket.emit('fromServer', {id: 'How are you!'});
-//		}
-//
-//	});
-
-	// listen for client messages and respond.
-	socket.on('getUsers', (req) => {
-		var token = req.token;
-        if (token) {
-            User.find(function (err, dat) {
-                if (err) return next(err);
-                socket.emit('getUsers', dat);
-                console.log(dat);
-              }).select({ "username": 1, "_id": 0});
-        } else {
-          socket.emit('serverError', {error: 'Unauthorized'});
-        }
-	});
-
-
-
-	// listen for client messages and respond.
-	socket.on('joinRoom', (req) => {
-	    let room = (req.from >= req.to) ? req.from + req.to : req.to + req.from;
-	    var token = req.token;
-        if (token) {
-          Message.find({ 'room': room }, function (err, dat) {
-            if (err) return next(err);
-            socket.emit('fromServer', dat);
-          }).limit(50);
-        } else {
-            socket.emit('serverError', {error: 'Unauthorized'});
-        }
-	});
-
-	socket.on('fromClient', (req) => {
-        let room = (req.from >= req.to) ? req.from + req.to : req.to + req.from;
-        var token = req.token;
-        if (token) {
-            socket.join(room);
-            io.sockets.in(room).emit('fromServer', [{message: req.message, from: req.from}]);
-             var mes = Message({
-                message: req.message,
-                from: req.from,
-                room: room
-              });
-              mes.save(function(err) {
-                if (err) throw err;
-
-                });
-
-        }else {
-            socket.emit('serverError', {error: 'Unauthorized'});
-        }
-    });
-
-	// listen for client messages and respond.
-	socket.on('leaveRoom', (req) => {
-		let room = (req.from >= req.to) ? req.from + req.to : req.to + req.from;
-		socket.leave(room);
-        io.sockets.in(room).emit('fromServer', "You are in room: "+room);
-	});
-
-
-
-	// listen for client messages and respond.
-	socket.on('login', (req) => {
-	    console.log(JSON.stringify(req, null, 4));
-		User.findOne({
-          username: req.username
-        }, function(err, user) {
-          if (err) throw err;
-
-          if (!user) {
-            socket.emit('loginInfo', {error: 'Authentication failed. User not found.'});
-          } else {
-            // check if password matches
-            user.comparePassword(req.password, function (err, isMatch) {
-              if (isMatch && !err) {
-                // if user is found and password is right create a token
-                var token = jwt.sign(user.toJSON(), settings.secret);
-                // return the information including token as JSON
-                socket.emit('loginInfo', {token: 'JWT ' + token, username: user.username});
-              } else {
-                socket.emit('loginInfo', {error: 'Authentication failed. Wrong password.'});
-              }
-            });
-          }
-        });
-
-	});
-});

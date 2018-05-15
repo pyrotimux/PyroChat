@@ -2,8 +2,8 @@
   <b-row class="justify-content-md-center">
     <b-col cols="6">
       <div v-if="errors && errors.length">
-        <div v-for="error of errors" :key="error.message">
-          <b-alert show>{{error.message}}</b-alert>
+        <div v-for="error of errors" :key="error">
+          <b-alert show>{{error}}</b-alert>
         </div>
       </div>
       <b-form @submit="onSubmit">
@@ -30,8 +30,6 @@
 
 <script>
 
-import axios from 'axios'
-
 export default {
   name: 'Login',
   data () {
@@ -40,21 +38,29 @@ export default {
       errors: []
     }
   },
-  methods: {
-    onSubmit (evt) {
-      evt.preventDefault()
-      axios.post(`http://localhost:9090/login`, this.login)
-      .then(response => {
-        localStorage.setItem('jwtToken', response.data.token)
-        localStorage.setItem('username', response.data.username)
+  sockets: {
+    loginInfo: function(response){
+      if("error" in response){
+        this.errors.push(response.error)
+        console.log(response.error)
+      }else{
+        localStorage.setItem('jwtToken', response.token)
+        localStorage.setItem('username', response.username)
         this.$router.push({
           name: 'Message'
         })
-      })
-      .catch(e => {
-        console.log(e)
-        this.errors.push(e)
-      })
+      }
+    },
+
+    // Fired when the server sends something on the "messageChannel" channel.
+    messageChannel(data) {
+      this.socketMessage = data.id
+    }
+  },
+  methods: {
+    onSubmit (evt) {
+      evt.preventDefault()
+      this.$socket.emit('login', this.login)
     },
     register () {
       this.$router.push({

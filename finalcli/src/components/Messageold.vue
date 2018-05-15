@@ -25,7 +25,7 @@
                   breakpoint="md"
                   label="To:">
           <b-form-select v-model.trim="mesg.to" @change.native="myChange">
-            <option v-for="i of users">
+            <option v-for="i of users"  :key="i">
               {{i.username}}
             </option>
           </b-form-select>
@@ -41,7 +41,7 @@
         <b-button type="submit" variant="primary">Send</b-button>
       </b-form>
       <br/><br/>
-      <p v-for="j in messages">{{ j.from }}: {{ j.message }} </p>
+      <p v-for="j in messages" :key="j.message">{{ j.from }}: {{ j.message }} </p>
       <ul v-if="errors && errors.length">
         <li v-for="error of errors"  :key="error.message">
           {{error.message}}
@@ -51,46 +51,65 @@
   </b-row>
 </template>
 
-
 <script>
+
+import axios from 'axios'
+
 export default {
-  data() {
+  name: 'MessageList',
+  data () {
     return {
-      mesg: {from: localStorage.getItem('username'), token: localStorage.getItem('jwtToken')},
+      mesg: {from: localStorage.getItem('username')},
       messages: [],
       errors: [],
       users:[]
     }
   },
-
-  sockets: {
-    fromServer: function(data){
-      console.log(data)
-      this.messages.push(...data)
-    },
-    getUsers: function(data){
-      this.users.push(...data)
-    },
-    serverError: function(data){
-      this.errors.push(...data)
-      this.$router.push({
-          name: 'Login'
-        })
-    }
-  },
-
   methods: {
     onSubmit (evt) {
       evt.preventDefault()
-      this.$socket.emit('fromClient', this.mesg)
+      axios.post(`http://localhost:9090/createmsg`, this.mesg)
+      .then(response => {
+        alert("Message Sent.")
+
+      })
+      .catch(e => {
+        console.log(e)
+        this.errors.push(e)
+      })
     },
     myChange(evt) {
-       this.mesg.to = evt.target.value
-       this.$socket.emit('joinRoom', this.mesg)
+       let val = evt.target.value
+       console.log("Hello")
    }
   },
   created () {
-    this.$socket.emit('getUsers', {token: localStorage.getItem('jwtToken')})
+    axios.defaults.headers.common['Authorization'] = localStorage.getItem('jwtToken')
+    axios.get(`http://localhost:9090/getmsg`)
+    .then(response => {
+      this.messages = response.data
+    })
+    .catch(e => {
+      this.errors.push(e)
+      if(e.status === 401) {
+        this.$router.push({
+          name: 'Login'
+        })
+      }
+    })
+
+    axios.get(`http://localhost:9090/getusers`)
+    .then(response => {
+      this.users = response.data
+    })
+    .catch(e => {
+      this.errors.push(e)
+      if(e.status === 401) {
+        this.$router.push({
+          name: 'Login'
+        })
+      }
+    })
   }
 }
 </script>

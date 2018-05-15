@@ -13,21 +13,26 @@ Vue.use(VueSocketio, 'http://localhost:9090')
 Vue.use(BootstrapVue)
 
 /* eslint-disable no-new */
-// new Vue({
-//   el: '#app',
-//   router,
-//   components: { App },
-//   template: '<App/>'
-// })
+ new Vue({
+   el: '#app',
+   router,
+   components: { App },
+   template: '<App/>'
+ })
 
-var vm = new Vue({
-  socket:{
-    connect: function(){
-      console.log('socket connected.')
-    },
-    fromServer: function(val){
-      console.log('Server: '+val)
-    }
-  }
-
-})
+//var vm = new Vue({
+//  socket:{
+//    connect: function(){
+//      console.log('socket connected.')
+//    },
+//    fromServer: function(val){
+//      console.log('Server: '+val)
+//    }
+//  },
+//  methods:{
+//    buttonClicked: function(val){
+//      this.$socket.emit("fromClient", val);
+//    }
+//  }
+//
+//})
