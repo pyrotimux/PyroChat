@@ -1,6 +1,7 @@
 <template>
   <b-row class="justify-content-md-center">
     <b-col cols="6">
+      <h2>Please Login</h2>
       <div v-if="errors && errors.length">
         <div v-for="error of errors" :key="error">
           <b-alert show>{{error}}</b-alert>

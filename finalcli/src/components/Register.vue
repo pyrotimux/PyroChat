@@ -31,8 +31,6 @@
 
 <script>
 
-import axios from 'axios'
-
 export default {
   name: 'Register',
   data () {
@@ -41,21 +39,20 @@ export default {
       errors: []
     }
   },
+  sockets: {
+    serverError: function(data){
+        this.errors.push(...data)
+    }
+  },
   methods: {
     onSubmit (evt) {
       evt.preventDefault()
-      axios.post(`http://localhost:9090/register`, this.register)
-      .then(response => {
-        alert("Registered successfully")
-        this.$router.push({
+      this.$socket.emit('register', this.register)
+      alert("Registered successfully")
+      this.$router.push({
           name: 'Login'
         })
-      })
-      .catch(e => {
-        console.log(e)
-        this.errors.push(e)
-      })
-    },
+    }
   }
 }
 </script>
